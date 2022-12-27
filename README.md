@@ -1,2 +1,2 @@
 # msaccess-vsto
-Msaccess VSTO Addin
+Msaccess VSTO Addin Example (VS2019)
