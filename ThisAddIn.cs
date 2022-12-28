@@ -14,10 +14,12 @@ namespace MyAddin
 
         private void ThisAddIn_Startup(object sender, System.EventArgs e)
         {
-            dynamic ext = (sender as Microsoft.Office.Tools.AddIn).Extension;
-            app = ext.Application;
-            //string name = app.Name;
-            //string version = app.Version;          
+            var args = Environment.GetCommandLineArgs();
+            app = this.Application;
+            string name = app.Name;
+            string version = app.Version;
+            app.VBE.MainWindow.Visible = true;
+
         }
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
