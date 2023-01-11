@@ -23,9 +23,9 @@ namespace MyAddin
         {
             foreach(object o in msg)
             {
-                res.Text+= o.ToString();
+                res.AppendText(o.ToString());
             }
-            res.Text += Environment.NewLine;
+            res.AppendText(Environment.NewLine);
         }
         public void Sleep(int n)
         {
@@ -33,10 +33,11 @@ namespace MyAddin
         }
         public void quit(int rc=0)
         {
-            throw new Exception("break");
-
+            throw new Exception("QUIT: "+rc);
         }
        
     }
+
+    
 }
 

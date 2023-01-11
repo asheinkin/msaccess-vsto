@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -14,11 +16,11 @@ namespace MyAddin
 
     public partial class Addin : Form
     {
-        dynamic app;
-        MSScriptControl.ScriptControl scr;
-        bool forceClose=false;
-        int timeOut=0;
-        private System.Windows.Forms.NotifyIcon notifyIcon1;
+        private dynamic app;
+        private ScriptControl scr;
+        private bool forceClose=false;
+        private int timeOut=0;
+        public  System.Windows.Forms.NotifyIcon notifyIcon1;
         private System.Windows.Forms.ContextMenu contextMenu1;
         private System.Windows.Forms.MenuItem menuItem1;
         private System.Windows.Forms.MenuItem menuItem2;
@@ -50,8 +52,9 @@ namespace MyAddin
             notifyIcon1.Visible = true;
             notifyIcon1.Click += NotifyIcon1_Click;
 
-
-            scr= new MSScriptControl.ScriptControl();
+            scr= new ScriptControl();
+            ((DScriptControlSource_Event)this.scr).Error +=   new DScriptControlSource_ErrorEventHandler(Script_Error);
+            ((DScriptControlSource_Event)this.scr).Timeout +=   new DScriptControlSource_TimeoutEventHandler(Script_Timeout);
         }
 
         private void NotifyIcon1_Click(object sender, EventArgs e)
@@ -72,46 +75,28 @@ namespace MyAddin
             this.Show();
             this.Activate();
         }
+        
 
-        private void Addin_Resize(object sender, EventArgs e)
+        private void Script_Timeout()
         {
-            if (this.WindowState == FormWindowState.Minimized)
-            {
-                this.Hide();               
-            }
+//            throw new NotImplementedException();
         }
 
-
-
-        private void Addin_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (!forceClose) { 
-                e.Cancel = true;
-                this.Hide();
-            }
-        }
-
-        private void Addin_Load(object sender, EventArgs e)
-        {
-           
-        }
-
-        private void Addin_Shown(object sender, EventArgs e)
-        {
-            this.Hide();
+        private void Script_Error()
+        {           
+//            throw new NotImplementedException();
         }
 
         private void setup()
         {
             scr.Language = "vbscript";
             scr.Reset();
-
             scr.UseSafeSubset = false;
             scr.SitehWnd = (int)this.Handle;
             (scr as IScriptControl).Timeout = this.timeOut; ;
             scr.AllowUI = true;
             scr.AddObject("Application", app, true);
-            //scr.State = ScriptControlStates.Initialized;
+            //scr.State = ScriptControlStates.Initialized;            
         }
         private void button1_Click(object sender, EventArgs e)
         {
@@ -123,23 +108,119 @@ namespace MyAddin
                 var src = this.src.Text;
                 if (src[0] == '?')
                 {
-                    res.Text = scr.Eval( src.Substring(1)).ToString();
+                    res.AppendText( scr.Eval( src.Substring(1)).ToString()+Environment.NewLine);
                 }else
                 {
-                   scr.ExecuteStatement(src);
-                   
+                   scr.ExecuteStatement(src);                   
                 }
-
-
             } 
-            catch(Exception exc)
+            catch(Exception ex)
             {
-                res.Text = string.Format("{0}\r\n{1}",exc.Source,exc.Message);
+                IScriptControl iscriptControl = this.scr as MSScriptControl.IScriptControl;
+                if (ex.Message.StartsWith("QUIT: "))
+                {                     
+                    this.res.AppendText($"\r\n{ex.Message}\r\n  at line {iscriptControl.Error.Line}\r\n");
+                }
+                 else
+                {                    
+                    this.res.AppendText(
+                        $"\r\nERROR : {ex.Message} {ex.HResult}"
+                        + Environment.NewLine + "  Description  : " + iscriptControl.Error.Description
+                        + Environment.NewLine + "  Number       : " + iscriptControl.Error.Number
+                        + Environment.NewLine + "  Source       : " + iscriptControl.Error.Source
+                        + Environment.NewLine + "  Line of error: " + iscriptControl.Error.Line
+                        + Environment.NewLine + "  Col  of error: " + iscriptControl.Error.Column
+                        + Environment.NewLine + "  Code error   : " + iscriptControl.Error.Text
+                        + Environment.NewLine
+                        + Environment.NewLine)
+                        ;                   
+                }
+                iscriptControl.Error.Clear();
             }
+            
             finally
             {
-                scr.Reset();
+                scr.Reset();               
             }
         }
+
+        private void Addin_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (!forceClose)
+            {
+                e.Cancel = true;
+                this.Hide();
+            } 
+        }
+
+
+        private void Addin_Resize(object sender, EventArgs e)
+        {
+            if (this.WindowState == FormWindowState.Minimized)
+            {
+                this.Hide();
+            }
+        }
+
+        private void Addin_Shown(object sender, EventArgs e)
+        {
+            this.Hide();
+        }
+
+
+
+        private void src_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Modifiers == Keys.Control && e.Modifiers != Keys.Alt && e.Modifiers != Keys.LWin)
+            {
+                if (e.KeyCode == Keys.R)
+                {
+                    button1_Click(sender, e);
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void src_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                e.Effect = DragDropEffects.Link;
+            else if (e.Data.GetDataPresent(DataFormats.Text))
+            {
+                e.Effect = DragDropEffects.Copy;
+                Point p = src.PointToClient(new Point(e.X, e.Y));
+                int index = src.GetCharIndexFromPosition(p);
+                Point cp = src.GetPositionFromCharIndex(index);
+                char c = src.GetCharFromPosition(p);
+                using (var g = src.CreateGraphics())
+                {
+                    var s = g.MeasureString(c.ToString(), src.Font);
+                    if (p.X > cp.X + s.Width / 2) ++index;
+                }
+                src.SelectionStart = index;
+                src.SelectionLength = 0;
+                src.Focus();
+            }
+            else
+                e.Effect = DragDropEffects.None;
+        }
+
+        private void src_DragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Effect == DragDropEffects.Copy)
+            {
+              src.Text =src.Text.Insert(src.SelectionStart, (string)e.Data.GetData(DataFormats.Text));
+              //int index = src.GetCharIndexFromPosition(src.PointToClient(Cursor.Position));
+            }
+            else if (e.Effect == DragDropEffects.Link)
+            {
+                string[] files = e.Data.GetData(DataFormats.FileDrop) as string[]; // get all files droppeds  
+                if (files != null && files.Any())
+                {
+                    src.Text = File.ReadAllText(files.First());                    
+                }
+            }
+        }
+        
     }
 }

@@ -26,6 +26,7 @@ namespace MyAddin
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
+            addin.notifyIcon1.Visible = false;
             addin.Close();
             app = null;
         }

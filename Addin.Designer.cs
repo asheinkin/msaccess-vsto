@@ -33,10 +33,10 @@ namespace MyAddin
             this.panel1 = new System.Windows.Forms.Panel();
             this.panel3 = new System.Windows.Forms.Panel();
             this.panel4 = new System.Windows.Forms.Panel();
-            this.src = new System.Windows.Forms.TextBox();
             this.panel6 = new System.Windows.Forms.Panel();
             this.button1 = new System.Windows.Forms.Button();
             this.res = new System.Windows.Forms.TextBox();
+            this.src = new System.Windows.Forms.TextBox();
             this.panel4.SuspendLayout();
             this.panel6.SuspendLayout();
             this.SuspendLayout();
@@ -46,7 +46,7 @@ namespace MyAddin
             this.panel1.Dock = System.Windows.Forms.DockStyle.Top;
             this.panel1.Location = new System.Drawing.Point(0, 0);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(1364, 10);
+            this.panel1.Size = new System.Drawing.Size(1161, 10);
             this.panel1.TabIndex = 2;
             // 
             // panel3
@@ -63,35 +63,26 @@ namespace MyAddin
             this.panel4.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panel4.Location = new System.Drawing.Point(0, 10);
             this.panel4.Name = "panel4";
-            this.panel4.Size = new System.Drawing.Size(1364, 667);
+            this.panel4.Size = new System.Drawing.Size(1161, 626);
             this.panel4.TabIndex = 5;
-            // 
-            // src
-            // 
-            this.src.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.src.Location = new System.Drawing.Point(0, 0);
-            this.src.Multiline = true;
-            this.src.Name = "src";
-            this.src.Size = new System.Drawing.Size(1364, 667);
-            this.src.TabIndex = 2;
             // 
             // panel6
             // 
             this.panel6.Controls.Add(this.button1);
             this.panel6.Controls.Add(this.res);
             this.panel6.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panel6.Location = new System.Drawing.Point(0, 567);
+            this.panel6.Location = new System.Drawing.Point(0, 451);
             this.panel6.Name = "panel6";
-            this.panel6.Size = new System.Drawing.Size(1364, 100);
+            this.panel6.Size = new System.Drawing.Size(1161, 175);
             this.panel6.TabIndex = 4;
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(549, 3);
+            this.button1.Location = new System.Drawing.Point(813, 17);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.Size = new System.Drawing.Size(111, 23);
             this.button1.TabIndex = 0;
-            this.button1.Text = "&Run";
+            this.button1.Text = "Run (Cntrl-R)";
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
@@ -101,15 +92,29 @@ namespace MyAddin
             this.res.Location = new System.Drawing.Point(0, 0);
             this.res.Multiline = true;
             this.res.Name = "res";
-            this.res.ReadOnly = true;
-            this.res.Size = new System.Drawing.Size(543, 100);
+            this.res.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.res.Size = new System.Drawing.Size(795, 175);
             this.res.TabIndex = 0;
+            // 
+            // src
+            // 
+            this.src.AllowDrop = true;
+            this.src.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.src.Location = new System.Drawing.Point(0, 0);
+            this.src.Multiline = true;
+            this.src.Name = "src";
+            this.src.ScrollBars = System.Windows.Forms.ScrollBars.Both;
+            this.src.Size = new System.Drawing.Size(1161, 626);
+            this.src.TabIndex = 2;
+            this.src.DragDrop += new System.Windows.Forms.DragEventHandler(this.src_DragDrop);
+            this.src.DragOver += new System.Windows.Forms.DragEventHandler(this.src_DragOver);
+            this.src.KeyDown += new System.Windows.Forms.KeyEventHandler(this.src_KeyDown);
             // 
             // Addin
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1364, 677);
+            this.ClientSize = new System.Drawing.Size(1161, 636);
             this.Controls.Add(this.panel4);
             this.Controls.Add(this.panel3);
             this.Controls.Add(this.panel1);
@@ -117,7 +122,6 @@ namespace MyAddin
             this.Name = "Addin";
             this.Text = "Addin";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Addin_FormClosing);
-            this.Load += new System.EventHandler(this.Addin_Load);
             this.Shown += new System.EventHandler(this.Addin_Shown);
             this.Resize += new System.EventHandler(this.Addin_Resize);
             this.panel4.ResumeLayout(false);
