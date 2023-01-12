@@ -34,6 +34,7 @@ namespace MyAddin
             this.panel3 = new System.Windows.Forms.Panel();
             this.panel4 = new System.Windows.Forms.Panel();
             this.panel6 = new System.Windows.Forms.Panel();
+            this.buttonClear = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
             this.res = new System.Windows.Forms.TextBox();
             this.src = new System.Windows.Forms.TextBox();
@@ -68,6 +69,7 @@ namespace MyAddin
             // 
             // panel6
             // 
+            this.panel6.Controls.Add(this.buttonClear);
             this.panel6.Controls.Add(this.button1);
             this.panel6.Controls.Add(this.res);
             this.panel6.Dock = System.Windows.Forms.DockStyle.Bottom;
@@ -75,6 +77,16 @@ namespace MyAddin
             this.panel6.Name = "panel6";
             this.panel6.Size = new System.Drawing.Size(1161, 175);
             this.panel6.TabIndex = 4;
+            // 
+            // buttonClear
+            // 
+            this.buttonClear.Location = new System.Drawing.Point(951, 17);
+            this.buttonClear.Name = "buttonClear";
+            this.buttonClear.Size = new System.Drawing.Size(111, 23);
+            this.buttonClear.TabIndex = 1;
+            this.buttonClear.Text = "Clear (Cntrl-E)";
+            this.buttonClear.UseVisualStyleBackColor = true;
+            this.buttonClear.Click += new System.EventHandler(this.clearClick);
             // 
             // button1
             // 
@@ -84,7 +96,7 @@ namespace MyAddin
             this.button1.TabIndex = 0;
             this.button1.Text = "Run (Cntrl-R)";
             this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
+            this.button1.Click += new System.EventHandler(this.runClick);
             // 
             // res
             // 
@@ -108,7 +120,6 @@ namespace MyAddin
             this.src.TabIndex = 2;
             this.src.DragDrop += new System.Windows.Forms.DragEventHandler(this.src_DragDrop);
             this.src.DragOver += new System.Windows.Forms.DragEventHandler(this.src_DragOver);
-            this.src.KeyDown += new System.Windows.Forms.KeyEventHandler(this.src_KeyDown);
             // 
             // Addin
             // 
@@ -123,6 +134,7 @@ namespace MyAddin
             this.Text = "Addin";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Addin_FormClosing);
             this.Shown += new System.EventHandler(this.Addin_Shown);
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.Addin_KeyDown);
             this.Resize += new System.EventHandler(this.Addin_Resize);
             this.panel4.ResumeLayout(false);
             this.panel4.PerformLayout();
@@ -140,5 +152,6 @@ namespace MyAddin
         private System.Windows.Forms.Panel panel6;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.TextBox res;
+        private System.Windows.Forms.Button buttonClear;
     }
 }

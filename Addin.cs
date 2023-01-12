@@ -10,25 +10,28 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-
+using Access=Microsoft.Office.Interop.Access;
 namespace MyAddin
 {
-
-    public partial class Addin : Form
+    public partial class Addin : System.Windows.Forms.Form
     {
-        private dynamic app;
-        private ScriptControl scr;
+        private Access.Application app;
+        public string[] args;
         private bool forceClose=false;
-        private int timeOut=0;
+        private bool show;
+        private int timeOut=60000;
         public  System.Windows.Forms.NotifyIcon notifyIcon1;
         private System.Windows.Forms.ContextMenu contextMenu1;
         private System.Windows.Forms.MenuItem menuItem1;
         private System.Windows.Forms.MenuItem menuItem2;
-        private System.ComponentModel.IContainer addinComponents;
-        public Addin(dynamic app)
+
+        public Addin(Microsoft.Office.Interop.Access.Application app,bool show)
         {
             InitializeComponent();
-
+            this.show = show;
+            args=Environment.GetCommandLineArgs();
+            
+            this.KeyPreview = true;
             this.app = app;
 
             this.components = new System.ComponentModel.Container();
@@ -52,9 +55,7 @@ namespace MyAddin
             notifyIcon1.Visible = true;
             notifyIcon1.Click += NotifyIcon1_Click;
 
-            scr= new ScriptControl();
-            ((DScriptControlSource_Event)this.scr).Error +=   new DScriptControlSource_ErrorEventHandler(Script_Error);
-            ((DScriptControlSource_Event)this.scr).Timeout +=   new DScriptControlSource_TimeoutEventHandler(Script_Timeout);
+            this.Show();              
         }
 
         private void NotifyIcon1_Click(object sender, EventArgs e)
@@ -66,8 +67,10 @@ namespace MyAddin
         private void MenuItem2_Click(object sender, EventArgs e)
         {
             forceClose = true;
+            this.notifyIcon1.Visible = false;
+            this.notifyIcon1 = null;
             this.Close();
-            app.Quit(2);
+            app.DoCmd.Quit(Access.AcQuitOption.acQuitSaveNone);
         }
 
         private void MenuItem1_Click(object sender, EventArgs e)
@@ -76,33 +79,29 @@ namespace MyAddin
             this.Activate();
         }
         
-
         private void Script_Timeout()
         {
 //            throw new NotImplementedException();
         }
 
         private void Script_Error()
-        {           
-//            throw new NotImplementedException();
-        }
-
-        private void setup()
         {
-            scr.Language = "vbscript";
-            scr.Reset();
-            scr.UseSafeSubset = false;
-            scr.SitehWnd = (int)this.Handle;
-            (scr as IScriptControl).Timeout = this.timeOut; ;
-            scr.AllowUI = true;
-            scr.AddObject("Application", app, true);
-            //scr.State = ScriptControlStates.Initialized;            
+ //           throw new NotImplementedException();
         }
-        private void button1_Click(object sender, EventArgs e)
+        private void runClick(object sender, EventArgs e)
         {
-            setup();
+            ScriptControl scr= new ScriptControl();
             try
             {
+                ((DScriptControlSource_Event)scr).Error += new DScriptControlSource_ErrorEventHandler(Script_Error);
+                ((DScriptControlSource_Event)scr).Timeout += new DScriptControlSource_TimeoutEventHandler(Script_Timeout);
+
+                scr.Language = "vbscript";                
+                scr.UseSafeSubset = false;
+                scr.SitehWnd = (int)this.Handle;
+                (scr as IScriptControl).Timeout = this.timeOut; ;
+                scr.AllowUI = true;
+                scr.AddObject("Application", app, true);
                 scr.AddObject("wscript", new Ctx(scr,res) as dynamic, false);
 
                 var src = this.src.Text;
@@ -116,7 +115,7 @@ namespace MyAddin
             } 
             catch(Exception ex)
             {
-                IScriptControl iscriptControl = this.scr as MSScriptControl.IScriptControl;
+                IScriptControl iscriptControl = scr as MSScriptControl.IScriptControl;
                 if (ex.Message.StartsWith("QUIT: "))
                 {                     
                     this.res.AppendText($"\r\n{ex.Message}\r\n  at line {iscriptControl.Error.Line}\r\n");
@@ -140,7 +139,12 @@ namespace MyAddin
             
             finally
             {
-                scr.Reset();               
+                scr.Reset();
+                Marshal.ReleaseComObject(scr);
+                scr = null;
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
             }
         }
 
@@ -153,7 +157,6 @@ namespace MyAddin
             } 
         }
 
-
         private void Addin_Resize(object sender, EventArgs e)
         {
             if (this.WindowState == FormWindowState.Minimized)
@@ -164,21 +167,7 @@ namespace MyAddin
 
         private void Addin_Shown(object sender, EventArgs e)
         {
-            this.Hide();
-        }
-
-
-
-        private void src_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Modifiers == Keys.Control && e.Modifiers != Keys.Alt && e.Modifiers != Keys.LWin)
-            {
-                if (e.KeyCode == Keys.R)
-                {
-                    button1_Click(sender, e);
-                    e.Handled = true;
-                }
-            }
+           if (!this.show)  this.Hide();
         }
 
         private void src_DragOver(object sender, DragEventArgs e)
@@ -221,6 +210,29 @@ namespace MyAddin
                 }
             }
         }
-        
+
+        private void Addin_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Modifiers == Keys.Control && e.Modifiers != Keys.Alt  && e.Modifiers !=Keys.Shift   )
+            {
+                if (e.KeyCode == Keys.R)
+                {
+                    runClick(sender, e);
+                    e.SuppressKeyPress = true;
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.E)
+                {
+                    this.res.Text = "";
+                    e.SuppressKeyPress = true;
+                    e.Handled = true;
+                }
+            } 
+        }
+
+        private void clearClick(object sender, EventArgs e)
+        {
+            this.res.Text = "";
+        }
     }
 }

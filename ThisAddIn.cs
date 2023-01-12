@@ -19,16 +19,19 @@ namespace MyAddin
             app = this.Application;
             string name = app.Name;
             string version = app.Version;
-           // app.VBE.MainWindow.Visible = true;
-            addin = new Addin(app);
+            app.VBE.MainWindow.Visible = true;
+            addin = new Addin(app,false);
             addin.Show();
         }
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
         {
-            addin.notifyIcon1.Visible = false;
-            addin.Close();
             app = null;
+            if (addin.notifyIcon1 != null)
+            {
+                addin.notifyIcon1.Visible = false;
+            }
+            //addin.Close();           
         }
 
         #region VSTO generated code

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -27,7 +28,7 @@ namespace MyAddin
             }
             res.AppendText(Environment.NewLine);
         }
-        public void Sleep(int n)
+        public void sleep(int n)
         {
             Thread.Sleep(n);
         }
@@ -35,7 +36,13 @@ namespace MyAddin
         {
             throw new Exception("QUIT: "+rc);
         }
-       
+        public string command()
+        {
+            return Environment.CommandLine; 
+        }
+        
+
+
     }
 
     
