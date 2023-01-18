@@ -1,5 +1,6 @@
 ﻿using MSScriptControl;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -15,21 +16,39 @@ namespace MyAddin
 {
     public partial class Addin : System.Windows.Forms.Form
     {
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
+        private static extern bool IsIconic(IntPtr handle);
+
+        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll",ExactSpelling = true, CharSet = CharSet.Auto)]
+        private  static extern IntPtr SendMessage(IntPtr hWnd, uint wMsg,              UIntPtr wParam, IntPtr lParam);
+
+        private const uint WM_SYSCOMMAND  =                 0x0112;
+        private   UIntPtr SC_RESTORE = (UIntPtr)0xF120;
+
         private Access.Application app;
         public string[] args;
         private bool forceClose=false;
         private bool show;
-        private int timeOut=60000;
+        private int timeOut;
+        private TextWriter wr;
         public  System.Windows.Forms.NotifyIcon notifyIcon1;
         private System.Windows.Forms.ContextMenu contextMenu1;
         private System.Windows.Forms.MenuItem menuItem1;
         private System.Windows.Forms.MenuItem menuItem2;
-
-        public Addin(Microsoft.Office.Interop.Access.Application app,bool show)
+        private System.Windows.Forms.MenuItem menuItem3;
+        private System.Windows.Forms.MenuItem menuItem4;
+        public Addin(Microsoft.Office.Interop.Access.Application app,  bool show,int timeOut,TextWriter wr,
+                string [] args,IDictionary env)
         {
             InitializeComponent();
             this.show = show;
-            args=Environment.GetCommandLineArgs();
+            this.timeOut = timeOut;
+            this.wr = wr;
+            args =Environment.GetCommandLineArgs();
             
             this.KeyPreview = true;
             this.app = app;
@@ -38,15 +57,27 @@ namespace MyAddin
             this.contextMenu1 = new System.Windows.Forms.ContextMenu();
             this.menuItem1 = new System.Windows.Forms.MenuItem();
             this.menuItem2 = new System.Windows.Forms.MenuItem();
+            this.menuItem3 = new System.Windows.Forms.MenuItem();
+            this.menuItem4 = new System.Windows.Forms.MenuItem();
 
             this.contextMenu1.MenuItems.AddRange(
-                   new System.Windows.Forms.MenuItem[] { this.menuItem1 , this.menuItem2 });
+                   new System.Windows.Forms.MenuItem[] { this.menuItem1 , this.menuItem2, this.menuItem3, this.menuItem4 });
+            this.contextMenu1.Popup += ContextMenu1_Popup;
             this.menuItem1.Index = 0;
-            this.menuItem1.Text = "&Show";
+            this.menuItem1.Text = "Addi&n";
             this.menuItem1.Click += MenuItem1_Click;
+
             this.menuItem2.Index = 1;
-            this.menuItem2.Text = "E&xit";
+            this.menuItem2.Text = "VB&E";
             this.menuItem2.Click += MenuItem2_Click;
+
+            this.menuItem3.Index = 2;
+            this.menuItem3.Text = "&Access";
+            this.menuItem3.Click += MenuItem3_Click;
+
+            this.menuItem4.Index = 3;
+            this.menuItem4.Text = "E&xit";
+            this.menuItem4.Click += MenuItem4_Click;
 
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             notifyIcon1.Icon = this.Icon;
@@ -58,13 +89,52 @@ namespace MyAddin
             this.Show();              
         }
 
+        private void ContextMenu1_Popup(object sender, EventArgs e)
+        {
+            this.menuItem2.Checked = app.VBE.MainWindow.Visible;
+            this.menuItem1.Checked = this.Visible;
+        }
+
         private void NotifyIcon1_Click(object sender, EventArgs e)
+        {
+            this.Show();
+            this.Activate();
+        }               
+
+        private void MenuItem1_Click(object sender, EventArgs e)
         {
             this.Show();
             this.Activate();
         }
 
         private void MenuItem2_Click(object sender, EventArgs e)
+        {
+
+            app.VBE.MainWindow.Visible = true;
+            IntPtr hWnd = (IntPtr)app.VBE.MainWindow.HWnd;
+
+            if (IsIconic(hWnd))SendMessage(hWnd, WM_SYSCOMMAND, SC_RESTORE, IntPtr.Zero);
+            SetForegroundWindow(hWnd);
+
+            // class: wndclass_desked_gsk
+            // class: OMain
+            // class: VbaWindow
+            // caption: Immediate
+
+            // SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0)
+            // SetForegroundWindow(hwnd)
+            // SetActiveWindow(hwnd)
+            // SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_SHOWWINDOW Or SWP_NOMOVE Or SWP_NOSIZE)
+           
+        }
+        private void MenuItem3_Click(object sender, EventArgs e)
+        {
+            IntPtr hWnd = (IntPtr)app.hWndAccessApp();
+            if (IsIconic(hWnd)) SendMessage(hWnd, WM_SYSCOMMAND, SC_RESTORE, IntPtr.Zero);
+            SetForegroundWindow(hWnd);
+        }
+
+        private void MenuItem4_Click(object sender, EventArgs e)
         {
             forceClose = true;
             this.notifyIcon1.Visible = false;
@@ -73,12 +143,6 @@ namespace MyAddin
             app.DoCmd.Quit(Access.AcQuitOption.acQuitSaveNone);
         }
 
-        private void MenuItem1_Click(object sender, EventArgs e)
-        {         
-            this.Show();
-            this.Activate();
-        }
-        
         private void Script_Timeout()
         {
 //            throw new NotImplementedException();
@@ -102,7 +166,12 @@ namespace MyAddin
                 (scr as IScriptControl).Timeout = this.timeOut; ;
                 scr.AllowUI = true;
                 scr.AddObject("Application", app, true);
-                scr.AddObject("wscript", new Ctx(scr,res) as dynamic, false);
+                scr.AddObject("wscript", new Ctx(scr, res,wr) as dynamic, false);
+
+                Type WShell = Type.GetTypeFromProgID("WScript.Shell");
+                var wShell= Activator.CreateInstance(WShell);
+                scr.AddObject("WshShell", wShell, false);
+
 
                 var src = this.src.Text;
                 if (src[0] == '?')
@@ -140,6 +209,7 @@ namespace MyAddin
             finally
             {
                 scr.Reset();
+                wr.Flush();
                 Marshal.ReleaseComObject(scr);
                 scr = null;
                 GC.Collect();
