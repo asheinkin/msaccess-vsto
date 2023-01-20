@@ -16,22 +16,23 @@ namespace MyAddin
 {
     public partial class Addin : System.Windows.Forms.Form
     {
-        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
+        [DllImport("user32.dll")]
         private static extern bool IsIconic(IntPtr handle);
 
-        [DllImport("user32.dll", ExactSpelling = true, CharSet = CharSet.Auto)]
+        [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-        [DllImport("user32.dll",ExactSpelling = true, CharSet = CharSet.Auto)]
+        [DllImport("user32.dll")]
         private  static extern IntPtr SendMessage(IntPtr hWnd, uint wMsg,              UIntPtr wParam, IntPtr lParam);
+         
 
         private const uint WM_SYSCOMMAND  =                 0x0112;
         private   UIntPtr SC_RESTORE = (UIntPtr)0xF120;
 
         private Access.Application app;
         public string[] args;
-        private bool forceClose=false;
+        public bool forceClose=false;
         private bool show;
         private int timeOut;
         private TextWriter wr;
@@ -41,10 +42,18 @@ namespace MyAddin
         private System.Windows.Forms.MenuItem menuItem2;
         private System.Windows.Forms.MenuItem menuItem3;
         private System.Windows.Forms.MenuItem menuItem4;
-        public Addin(Microsoft.Office.Interop.Access.Application app,  bool show,int timeOut,TextWriter wr,
-                string [] args,IDictionary env)
+        public Addin(Microsoft.Office.Interop.Access.Application app,
+                bool show,
+                bool showVbe,
+                bool topmost,
+                int timeOut,
+                TextWriter wr,
+                string [] args,
+                IDictionary env)
         {
             InitializeComponent();
+
+            this.TopMost =topmost;
             this.show = show;
             this.timeOut = timeOut;
             this.wr = wr;
@@ -86,11 +95,13 @@ namespace MyAddin
             notifyIcon1.Visible = true;
             notifyIcon1.Click += NotifyIcon1_Click;
 
-            this.Show();              
+            this.Show();
+            app.VBE.MainWindow.Visible =showVbe;
         }
 
         private void ContextMenu1_Popup(object sender, EventArgs e)
         {
+            this.menuItem3.Checked = ! IsIconic((IntPtr)app.hWndAccessApp());
             this.menuItem2.Checked = app.VBE.MainWindow.Visible;
             this.menuItem1.Checked = this.Visible;
         }
@@ -105,33 +116,31 @@ namespace MyAddin
         {
             this.Show();
             this.Activate();
+            if (IsIconic(this.Handle)) SendMessage(this.Handle, WM_SYSCOMMAND, SC_RESTORE, IntPtr.Zero);
+            SetForegroundWindow(this.Handle);
         }
 
-        private void MenuItem2_Click(object sender, EventArgs e)
+        private void showVBE()
         {
-
             app.VBE.MainWindow.Visible = true;
             IntPtr hWnd = (IntPtr)app.VBE.MainWindow.HWnd;
-
-            if (IsIconic(hWnd))SendMessage(hWnd, WM_SYSCOMMAND, SC_RESTORE, IntPtr.Zero);
+            if (IsIconic(hWnd)) SendMessage(hWnd, WM_SYSCOMMAND, SC_RESTORE, IntPtr.Zero);
             SetForegroundWindow(hWnd);
-
-            // class: wndclass_desked_gsk
-            // class: OMain
-            // class: VbaWindow
-            // caption: Immediate
-
-            // SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0)
-            // SetForegroundWindow(hwnd)
-            // SetActiveWindow(hwnd)
-            // SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_SHOWWINDOW Or SWP_NOMOVE Or SWP_NOSIZE)
-           
         }
-        private void MenuItem3_Click(object sender, EventArgs e)
+
+        private void showAccess()
         {
             IntPtr hWnd = (IntPtr)app.hWndAccessApp();
             if (IsIconic(hWnd)) SendMessage(hWnd, WM_SYSCOMMAND, SC_RESTORE, IntPtr.Zero);
             SetForegroundWindow(hWnd);
+        }
+        private void MenuItem2_Click(object sender, EventArgs e)
+        {
+            showVBE();
+        }
+        private void MenuItem3_Click(object sender, EventArgs e)
+        {
+            showAccess();
         }
 
         private void MenuItem4_Click(object sender, EventArgs e)
@@ -166,12 +175,14 @@ namespace MyAddin
                 (scr as IScriptControl).Timeout = this.timeOut; ;
                 scr.AllowUI = true;
                 scr.AddObject("Application", app, true);
-                scr.AddObject("wscript", new Ctx(scr, res,wr) as dynamic, false);
+                scr.AddObject("wsc", new Ctx(scr, res,wr) as dynamic, false);
 
-                Type WShell = Type.GetTypeFromProgID("WScript.Shell");
-                var wShell= Activator.CreateInstance(WShell);
+
+                var wShell= Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell"));
                 scr.AddObject("WshShell", wShell, false);
-
+                
+                var fso = Activator.CreateInstance(Type.GetTypeFromProgID("Scripting.FileSystemObject"));
+                scr.AddObject("fso", wShell, false);
 
                 var src = this.src.Text;
                 if (src[0] == '?')
@@ -296,7 +307,7 @@ namespace MyAddin
                     this.res.Text = "";
                     e.SuppressKeyPress = true;
                     e.Handled = true;
-                }
+                } 
             } 
         }
 
@@ -304,5 +315,55 @@ namespace MyAddin
         {
             this.res.Text = "";
         }
+
+        private void bAccess_Click(object sender, EventArgs e)
+        {
+            showAccess();
+        }
+
+        private void bVbe_Click(object sender, EventArgs e)
+        {
+            showVBE();
+        }
+
+        private void bCloseApp_Click(object sender, EventArgs e)
+        {
+            app.Quit();
+        }
+
+        private void Addin_Load(object sender, EventArgs e)
+        {
+            var local =Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var path = Path.Combine(local, "msaccess-myaddin","src.vbs");
+            if (File.Exists(path))
+            {
+                src.Text = File.ReadAllText(path);              
+            }
+            
+        }
+
+        private void Addin_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var path = Path.Combine(local, "msaccess-myaddin");
+            if (!Directory.Exists(path)){
+                System.IO.Directory.CreateDirectory(path);
+            };
+            
+            File.WriteAllText(Path.Combine(path, "src.vbs"), src.Text, Encoding.Unicode);
+
+        }
     }
 }
+
+
+
+// class: wndclass_desked_gsk
+// class: OMain
+// class: VbaWindow
+// caption: Immediate
+
+// SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0)
+// SetForegroundWindow(hwnd)
+// SetActiveWindow(hwnd)
+// SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_SHOWWINDOW Or SWP_NOMOVE Or SWP_NOSIZE)
